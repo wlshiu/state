@@ -61,7 +61,7 @@ typedef struct state_args
 typedef struct state_desc
 {
     // identify
-    unsigned int            state_tag;
+    unsigned long            state_tag;
 
     // state initialize
     state_err_t     (*init)(state_args_t *pArgs);

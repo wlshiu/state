@@ -41,6 +41,7 @@ typedef struct state_dev
     sys_mutex_t     mtx_state;
 
     state_box_t     *pFirst_stat_box;
+    state_box_t     *pLast_stat_box;
     state_box_t     *pState_box_cur;
     state_box_t     *pState_box_next;
 } state_dev_t;
@@ -108,6 +109,7 @@ _state_mgr_state_deinit(
 
     return result;
 }
+
 //=============================================================================
 //                  Public Function Definition
 //=============================================================================
@@ -169,6 +171,8 @@ state_mgr_destroy(
 
         mutex = pDev->mtx_state;
 
+        // TODO: free registered state list
+
         sys_free(pDev);
 
         _mutex_unlock(&mutex);
@@ -191,15 +195,51 @@ state_mgr_state_regester(
 
     _mutex_lock(&pDev->mtx_state);
     do {
+        state_box_t     *pState_box_tmp = 0, *pState_box_new = 0;
+
+        // verify state exist or not
+        pState_box_tmp = pDev->pFirst_stat_box;
+        while( pState_box_tmp )
+        {
+            if( pState_box_tmp->state_desc.state_tag == pState_desc->state_tag )
+            {
+                log_err("state (tag= x%lx) is already registered\n", pState_desc->state_tag);
+                result = STATE_ERR_INVALID_PARAM;
+                break;
+            }
+            pState_box_tmp = pState_box_tmp->next;
+        }
+
+        if( pState_box_tmp )
+            break;
+
+        // create instance
+        if( !(pState_box_new = sys_malloc(0, sizeof(state_box_t))) )
+        {
+            log_err("error, malloc (%d) fail !!\n", sizeof(state_box_t));
+            result = STATE_ERR_ALLOCATE_FAIL;
+            break;
+        }
+        memset(pState_box_new, 0x0, sizeof(state_box_t));
+
+        // assign info
+        pState_box_new->state_desc = (*pState_desc);
+
+        // insert
+        if( pDev->pFirst_stat_box )
+        {
+            pDev->pLast_stat_box->next = pState_box_new;
+            pDev->pLast_stat_box       = pState_box_new;
+        }
+        else
+        {
+            pDev->pFirst_stat_box = pState_box_new;
+            pDev->pLast_stat_box  = pState_box_new;
+        }
 
     } while(0);
 
     _mutex_unlock(&pDev->mtx_state);
-
-    if( result != STATE_ERR_OK )
-    {
-        log_err("err 0x%x !\n", result);
-    }
 
     return result;
 }
@@ -244,7 +284,8 @@ state_mgr_state_proc(
 state_err_t
 state_mgr_state_change(
     state_mgr_t     *pHStateMgr,
-    unsigned int    act_state_tag)
+    unsigned long   act_state_tag,
+    state_args_t    *pExtraData)
 {
     state_err_t        result = STATE_ERR_OK;
     state_dev_t        *pDev = STRUCTURE_POINTER(state_dev_t, pHStateMgr, state_mgr);
@@ -270,7 +311,7 @@ state_mgr_state_change(
 
         if( !pTarget_state_box )
         {
-            log_err("can't find this state (x%x)\n", act_state_tag);
+            log_err("can't find this state (x%lx)\n", act_state_tag);
             result = STATE_ERR_INVALID_PARAM;
             break;
         }
@@ -305,7 +346,7 @@ state_mgr_state_change(
 
 /*
 state_err_t
-d_tamplete(
+state_mgr_tamplete(
     state_mgr_t     *pHStateMgr,
     void            *extraData)
 {
