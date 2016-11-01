@@ -46,6 +46,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="state.h" />
+		<Unit filename="state_object.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="state_object.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />

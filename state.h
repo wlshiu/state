@@ -70,7 +70,7 @@ typedef struct state_desc
     state_err_t     (*deinit)(state_args_t *pArgs);
 
     // state routing process
-    state_err_t     (*proc)(state_args_t *pArgs);
+//    state_err_t     (*proc)(state_args_t *pArgs);
 
     // private data of state
     void            *pPriv_data[4];
@@ -113,6 +113,11 @@ state_err_t
 state_mgr_destroy(
     state_mgr_t    **ppHStateMgr);
 
+
+state_err_t
+state_mgr_state_register(
+    state_mgr_t     *pHStateMgr,
+    state_desc_t    *pState_desc);
 
 
 #ifdef __cplusplus

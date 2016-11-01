@@ -13,7 +13,7 @@
 #include "log.h"
 #include "platform_def.h"
 #include "state.h"
-
+#include "state_object.h"
 
 //=============================================================================
 //                  Constant Definition
@@ -40,10 +40,16 @@ typedef struct state_dev
 
     sys_mutex_t     mtx_state;
 
+    // state box list
     state_box_t     *pFirst_stat_box;
     state_box_t     *pLast_stat_box;
-    state_box_t     *pState_box_cur;
-    state_box_t     *pState_box_next;
+
+    // active state box
+    state_box_t     *pState_box_act;
+    state_box_t     *pState_box_next_act;
+    void            *pAttach_data;
+
+    state_obj_desc_t    *pHObj;
 } state_dev_t;
 //=============================================================================
 //                  Global Data Definition
@@ -64,10 +70,10 @@ _state_mgr_state_init(
 
     _mutex_lock(&pDev->mtx_state);
     do {
-        if( pDev->pState_box_cur &&
-            pDev->pState_box_cur->state_desc.init )
+        if( pDev->pState_box_act &&
+            pDev->pState_box_act->state_desc.init )
         {
-            if( (result = pDev->pState_box_cur->state_desc.init(pArgs))
+            if( (result = pDev->pState_box_act->state_desc.init(pArgs))
                     != STATE_ERR_OK )
             {
                 log_err("init state fail (result= x%x)\n", result);
@@ -93,10 +99,10 @@ _state_mgr_state_deinit(
 
     _mutex_lock(&pDev->mtx_state);
     do {
-        if( pDev->pState_box_cur &&
-            pDev->pState_box_cur->state_desc.deinit )
+        if( pDev->pState_box_act &&
+            pDev->pState_box_act->state_desc.deinit )
         {
-            if( (result = pDev->pState_box_cur->state_desc.deinit(pArgs))
+            if( (result = pDev->pState_box_act->state_desc.deinit(pArgs))
                     != STATE_ERR_OK )
             {
                 log_err("deinit state fail (result= x%x)\n", result);
@@ -120,7 +126,7 @@ state_mgr_create(
 {
     state_err_t        result = STATE_ERR_OK;
 
-    do{
+    do {
         state_dev_t         *pDev = 0;
 
         if( *ppHStateMgr )
@@ -144,10 +150,11 @@ state_mgr_create(
         //----------------------
         (*ppHStateMgr) = &pDev->state_mgr;
 
-    }while(0);
+    } while(0);
 
     if( result != STATE_ERR_OK )
     {
+        // TODO: destroy dev
         log_err("err 0x%x !\n", result);
     }
 
@@ -183,7 +190,7 @@ state_mgr_destroy(
 }
 
 state_err_t
-state_mgr_state_regester(
+state_mgr_state_register(
     state_mgr_t     *pHStateMgr,
     state_desc_t    *pState_desc)
 {
@@ -258,22 +265,24 @@ state_mgr_state_proc(
 
     _mutex_lock(&pDev->mtx_state);
     do {
-        if( pDev->pState_box_cur &&
-            pDev->pState_box_cur->state_desc.proc )
+        #if 0
+        if( pDev->pState_box_act &&
+            pDev->pState_box_act->state_desc.proc )
         {
-            if( (result = pDev->pState_box_cur->state_desc.proc(pArgs))
+            if( (result = pDev->pState_box_act->state_desc.proc(pArgs))
                     != STATE_ERR_OK )
             {
                 log_err("state process fail (result= x%x)\n", result);
                 break;
             }
         }
+        #endif
 
         // if state change
 
-        // terminate current state
+        // terminate current active state
 
-        // initialize the new state
+        // initialize the next active state
     } while(0);
 
     _mutex_unlock(&pDev->mtx_state);
@@ -282,7 +291,7 @@ state_mgr_state_proc(
 }
 
 state_err_t
-state_mgr_state_change(
+state_mgr_set_active_state(
     state_mgr_t     *pHStateMgr,
     unsigned long   act_state_tag,
     state_args_t    *pExtraData)
@@ -316,25 +325,29 @@ state_mgr_state_change(
             break;
         }
 
-        if( pDev->pState_box_cur )
+        pDev->pState_box_next_act = pTarget_state_box;
+        pDev->pAttach_data        = pExtraData;
+
+        if( pDev->pState_box_act == pTarget_state_box )
         {
-            if( pDev->pState_box_cur->state_desc.state_tag == act_state_tag )
-            {
-                log_info("current state (x%x) was target, no change... \n", act_state_tag);
-                break;
-            }
+            log_info("current state (x%x) was target, no change... \n", act_state_tag);
+            break;
         }
-        else
-        {
-
-        }
-
-
-
 
     } while(0);
 
     _mutex_unlock(&pDev->mtx_state);
+
+    return result;
+}
+
+state_err_t
+state_mgr_object_register(
+    state_mgr_t     *pHStateMgr,
+    void            *extraData)
+{
+    state_err_t        result = STATE_ERR_OK;
+
 
     if( result != STATE_ERR_OK )
     {
