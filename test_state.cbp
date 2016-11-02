@@ -37,6 +37,7 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="link_list.h" />
 		<Unit filename="log.h" />
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />

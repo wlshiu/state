@@ -37,7 +37,7 @@ typedef enum state_obj_msg_status
     STATE_OBJ_MSG_BREAK,
 } state_obj_msg_status_t;
 
-typedef state_obj_msg_status_t (*CB_OBJ_MSG_HANDLE)(void *pMsg, void *pExtra_data);
+
 //=============================================================================
 //                  Macro Definition
 //=============================================================================
@@ -45,6 +45,18 @@ typedef state_obj_msg_status_t (*CB_OBJ_MSG_HANDLE)(void *pMsg, void *pExtra_dat
 //=============================================================================
 //                  Structure Definition
 //=============================================================================
+typedef struct state_obj_base_msg
+{
+    unsigned long       msg_tag;
+
+    unsigned long       from;
+    unsigned long       to;
+
+} state_obj_base_msg_t;
+
+typedef state_obj_msg_status_t (*CB_OBJ_MSG_HANDLE)(state_obj_base_msg_t *pMsg, void *pExtra_msg);
+
+
 /**
  *  obj descriptor
  */
@@ -74,6 +86,30 @@ typedef struct state_obj_handle
 //=============================================================================
 //                  Public Function Definition
 //=============================================================================
+state_obj_err_t
+state_obj_create_handle(
+    state_obj_handle_t      **ppHObj,
+    void                    *extraData);
+
+
+state_obj_err_t
+state_obj_destroy_handle(
+    state_obj_handle_t      **ppHObj,
+    void                    *extraData);
+
+
+state_obj_err_t
+state_obj_register(
+    state_obj_handle_t      *pHObj,
+    state_obj_desc_t        *pObj_desc);
+
+
+state_obj_err_t
+state_obj_handle_msg(
+    state_obj_handle_t      *pHObj,
+    state_obj_base_msg_t    *pMsg,
+    void                    *pExtra_data);
+
 
 #ifdef __cplusplus
 }

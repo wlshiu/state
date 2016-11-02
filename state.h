@@ -18,7 +18,7 @@ extern "C" {
 #endif
 
 
-#include <stdlib.h>
+#include "state_object.h"
 //=============================================================================
 //                  Constant Definition
 //=============================================================================
@@ -46,6 +46,8 @@ typedef enum state_err
  */
 typedef struct state_args
 {
+    state_obj_base_msg_t    base_msg_info;
+
     union {
         unsigned int        u32_value;
         unsigned long long  u64_value;
@@ -64,10 +66,10 @@ typedef struct state_desc
     unsigned long            state_tag;
 
     // state initialize
-    state_err_t     (*init)(state_args_t *pArgs);
+    state_err_t     (*init)(state_args_t *pArgs, state_obj_handle_t **ppHObj_priv);
 
     // state terminate
-    state_err_t     (*deinit)(state_args_t *pArgs);
+    state_err_t     (*deinit)(state_args_t *pArgs, state_obj_handle_t **ppHObj_priv);
 
     // state routing process
 //    state_err_t     (*proc)(state_args_t *pArgs);
@@ -118,6 +120,20 @@ state_err_t
 state_mgr_state_register(
     state_mgr_t     *pHStateMgr,
     state_desc_t    *pState_desc);
+
+
+state_err_t
+state_mgr_state_proc(
+    state_mgr_t     *pHStateMgr,
+    state_args_t    *pArgs);
+
+
+state_err_t
+state_mgr_set_active_state(
+    state_mgr_t     *pHStateMgr,
+    unsigned long   act_state_tag,
+    state_args_t    *pAttach_data);
+
 
 
 #ifdef __cplusplus

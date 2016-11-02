@@ -30,7 +30,7 @@
  */
 typedef struct state_obj_desc_box
 {
-    struct state_obj_desc   *next;
+    struct state_obj_desc_box   *next;
 
     state_obj_desc_t        obj_desc;
 
@@ -46,8 +46,8 @@ typedef struct state_obj_dev
 
     sys_mutex_t                 mtx_obj;
 
-    state_obj_desc_box_t        *pFirst_obj;
-    state_obj_desc_box_t        *pLast_obj;
+    state_obj_desc_box_t        *pFirst_obj_box;
+    state_obj_desc_box_t        *pLast_obj_box;
 
 } state_obj_dev_t;
 //=============================================================================
@@ -131,8 +131,8 @@ state_obj_destroy_handle(
 
 state_obj_err_t
 state_obj_register(
-    state_obj_handle_t      *pHObj,
-    state_obj_desc_t        *pObj_desc)
+    state_obj_handle_t  *pHObj,
+    state_obj_desc_t    *pObj_desc)
 {
     state_obj_err_t     rval = STATE_OBJ_ERR_OK;
     state_obj_dev_t     *pDev = STRUCTURE_POINTER(state_obj_dev_t, pHObj, state_obj_handle);
@@ -142,7 +142,69 @@ state_obj_register(
 
     _mutex_lock(&pDev->mtx_obj);
     do {
+        state_obj_desc_box_t        *pObj_box_new = 0;
 
+        // create instance
+        if( !(pObj_box_new = sys_malloc(0, sizeof(state_obj_desc_box_t))) )
+        {
+            log_err("error, malloc (%d) fail !!\n", sizeof(state_obj_desc_box_t));
+            rval = STATE_OBJ_ERR_ALLOCATE_FAIL;
+            break;
+        }
+        memset(pObj_box_new, 0x0, sizeof(state_obj_desc_box_t));
+
+        // assign info
+        pObj_box_new->obj_desc = (*pObj_desc);
+
+        // insert
+        if( pDev->pFirst_obj_box )
+        {
+            pDev->pLast_obj_box->next = pObj_box_new;
+            pDev->pLast_obj_box       = pObj_box_new;
+        }
+        else
+        {
+            pDev->pFirst_obj_box = pObj_box_new;
+            pDev->pLast_obj_box  = pObj_box_new;
+        }
+    } while(0);
+
+    _mutex_unlock(&pDev->mtx_obj);
+
+    return rval;
+}
+
+state_obj_err_t
+state_obj_handle_msg(
+    state_obj_handle_t      *pHObj,
+    state_obj_base_msg_t    *pMsg,
+    void                    *pExtra_data)
+{
+    state_obj_err_t     rval = STATE_OBJ_ERR_OK;
+    state_obj_dev_t     *pDev = STRUCTURE_POINTER(state_obj_dev_t, pHObj, state_obj_handle);
+
+    _verify_handle(pHObj, STATE_OBJ_ERR_INVAILD_PARAM);
+
+    _mutex_lock(&pDev->mtx_obj);
+    do {
+        state_obj_desc_box_t    *pCur_obj_box = 0;
+
+        pCur_obj_box = pDev->pFirst_obj_box;
+        while( pCur_obj_box )
+        {
+            CB_OBJ_MSG_HANDLE   cb_msg_handler = pCur_obj_box->obj_desc.cb_msg_handler;
+
+            if( cb_msg_handler )
+            {
+                state_obj_msg_status_t      msg_status = STATE_OBJ_MSG_ROLL;
+
+                msg_status = cb_msg_handler(pMsg, pExtra_data);
+                if( msg_status == STATE_OBJ_MSG_BREAK )
+                    break;
+            }
+
+            pCur_obj_box = pCur_obj_box->next;
+        }
     } while(0);
 
     _mutex_unlock(&pDev->mtx_obj);
