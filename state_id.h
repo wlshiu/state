@@ -21,6 +21,9 @@ extern "C" {
 //=============================================================================
 //                  Constant Definition
 //=============================================================================
+#define STATE_ID_AAAA       0xaaaa
+#define STATE_ID_BBBB       0xbbbb
+
 /**
  *  set of state id (maybe don't need these)
  */

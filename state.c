@@ -266,7 +266,7 @@ state_mgr_state_proc(
     _mutex_lock(&pDev->mtx_state);
     do {
         // send msg to all objects in this state
-        state_obj_handle_msg(pDev->pHObj, (state_obj_base_msg_t*)pArgs,
+        state_obj_handle_msg(pDev->pHObj, (state_obj_base_msg_t*)&pArgs->base_msg_info,
                              (pDev->pState_box_act) ? &pDev->pState_box_act->state_desc : 0);
 
         // state change

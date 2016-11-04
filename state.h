@@ -71,9 +71,6 @@ typedef struct state_desc
     // state terminate
     state_err_t     (*deinit)(state_args_t *pArgs, state_obj_handle_t **ppHObj_priv);
 
-    // state routing process
-//    state_err_t     (*proc)(state_args_t *pArgs);
-
     // private data of state
     void            *pPriv_data[4];
 
@@ -127,7 +124,17 @@ state_mgr_state_proc(
     state_mgr_t     *pHStateMgr,
     state_args_t    *pArgs);
 
-
+/**
+ *  \brief Brief
+ *      change the active state
+ *
+ *  \param [in] pHStateMgr      handle of state manager
+ *  \param [in] act_state_tag   tag of active state
+ *  \param [in] pAttach_data    attached data. You should instance by self.
+ *                                  In this framework, it only pass the pointer.
+ *  \return     state_err_t
+ *
+ */
 state_err_t
 state_mgr_set_active_state(
     state_mgr_t     *pHStateMgr,

@@ -47,6 +47,9 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="state.h" />
+		<Unit filename="state_id_test.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="state_object.c">
 			<Option compilerVar="CC" />
 		</Unit>

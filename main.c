@@ -3,6 +3,7 @@
 #include <pthread.h>
 
 #include "log.h"
+#include "state_id.h"
 #include "state.h"
 
 #include "link_list.h"
@@ -22,9 +23,7 @@ typedef struct mevent
 {
     llist_t             list;
 
-    unsigned long       msg_id;
-    void                *pExtra_data;
-
+    state_args_t        args;
 } mevent_t;
 //===============================================
 // global variables
@@ -38,150 +37,6 @@ static mevent_t         g_event[MAX_EVENT_NUM] = {{{0}}};
 static llist_t          g_1st_event = {0};
 //===============================================
 //===============================================
-// objects
-static state_obj_msg_status_t
-_obj_1_msg_handler(
-    state_obj_base_msg_t *pMsg,
-    void                 *pState_desc)
-{
-    dbg(" get msg\n");
-    return STATE_OBJ_MSG_ROLL;
-}
-
-static state_obj_msg_status_t
-_obj_2_msg_handler(
-    state_obj_base_msg_t *pMsg,
-    void                 *pState_desc)
-{
-    dbg(" get msg\n");
-    return STATE_OBJ_MSG_ROLL;
-}
-
-static state_obj_msg_status_t
-_obj_3_msg_handler(
-    state_obj_base_msg_t *pMsg,
-    void                 *pState_desc)
-{
-    dbg(" get msg\n");
-    return STATE_OBJ_MSG_ROLL;
-}
-
-static state_obj_desc_t        g_obj_1 =
-{
-    .obj_tag        = 0x1,
-    .cb_msg_handler = _obj_1_msg_handler,
-};
-
-static state_obj_desc_t        g_obj_2 =
-{
-    .obj_tag        = 0x2,
-    .cb_msg_handler = _obj_2_msg_handler,
-};
-
-static state_obj_desc_t        g_obj_3 =
-{
-    .obj_tag        = 0x3,
-    .cb_msg_handler = _obj_3_msg_handler,
-};
-
-//===============================================
-// example of state description
-#define STATE_ID_AAAA       0xaaaa
-#define STATE_ID_BBBB       0xbbbb
-
-static state_err_t
-_state_aaaa_init(
-    state_args_t        *pArgs,
-    state_obj_handle_t  **ppHObj_priv)
-{
-    state_obj_handle_t      *pHObj = 0;
-
-    dbg("enter\n");
-    do {
-        // create obj
-        state_obj_create_handle(&pHObj, 0);
-        if( !pHObj )
-        {
-            log_err("create pHObj fail \n");
-            break;
-        }
-
-        // register obj
-        state_obj_register(pHObj, &g_obj_1);
-        state_obj_register(pHObj, &g_obj_2);
-    } while(0);
-
-    *ppHObj_priv = pHObj;
-    return 0;
-}
-
-static state_err_t
-_state_aaaa_deinit(
-    state_args_t        *pArgs,
-    state_obj_handle_t  **ppHObj_priv)
-{
-    state_obj_handle_t      *pHObj = *ppHObj_priv;
-    dbg("enter\n");
-
-    *ppHObj_priv = 0;
-    // destroy obj
-    state_obj_destroy_handle(&pHObj, 0);
-    return 0;
-}
-
-static state_err_t
-_state_bbbb_init(
-    state_args_t        *pArgs,
-    state_obj_handle_t  **ppHObj_priv)
-{
-    state_obj_handle_t      *pHObj = 0;
-
-    dbg("enter\n");
-    do {
-        // create obj
-        state_obj_create_handle(&pHObj, 0);
-        if( !pHObj )
-        {
-            log_err("create pHObj fail \n");
-            break;
-        }
-
-        // register obj
-        state_obj_register(pHObj, &g_obj_3);
-    } while(0);
-
-    *ppHObj_priv = pHObj;
-    return 0;
-}
-
-static state_err_t
-_state_bbbb_deinit(
-    state_args_t        *pArgs,
-    state_obj_handle_t  **ppHObj_priv)
-{
-    state_obj_handle_t      *pHObj = *ppHObj_priv;
-    dbg("enter\n");
-
-    *ppHObj_priv = 0;
-    // destroy obj
-    state_obj_destroy_handle(&pHObj, 0);
-    return 0;
-}
-
-static state_desc_t    g_state_aaaa_desc =
-{
-    .state_tag  = STATE_ID_AAAA,
-    .init       = _state_aaaa_init,
-    .deinit     = _state_aaaa_deinit,
-};
-
-static state_desc_t    g_state_bbbb_desc =
-{
-    .state_tag  = STATE_ID_BBBB,
-    .init       = _state_bbbb_init,
-    .deinit     = _state_bbbb_deinit,
-};
-
 //===============================================
 // message routing
 static void*
@@ -215,13 +70,13 @@ _thread_test(void *pArgs)
         {
             mevent_t        *pEvent_act = (mevent_t*)((long)pCur - (long)&((mevent_t*)0)->list);
 
-            switch( pEvent_act->msg_id )
+            switch( pEvent_act->args.base_msg_info.msg_tag )
             {
                 case MSG_ID_CHANGE_STATE:
-                    state_mgr_set_active_state(pHState, STATE_ID_BBBB, 0);
+                    state_mgr_set_active_state(pHState, STATE_ID_BBBB, &pEvent_act->args);
                     break;
                 default:
-                    state_mgr_state_proc(pHState, 0);
+                    state_mgr_state_proc(pHState, &pEvent_act->args);
                     break;
             }
         }
@@ -252,8 +107,16 @@ int main(void)
     state_mgr_create(&pHState, 0);
 
     // register state
-    state_mgr_state_register(pHState, &g_state_aaaa_desc);
-    state_mgr_state_register(pHState, &g_state_bbbb_desc);
+    {
+        extern state_desc_t    g_state_aaaa_desc;
+        state_mgr_state_register(pHState, &g_state_aaaa_desc);
+    }
+
+    {
+        extern state_desc_t    g_state_bbbb_desc;
+        state_mgr_state_register(pHState, &g_state_bbbb_desc);
+    }
+
 
     // create routing
     thread_arg.pIs_keep_thread = &is_keep_thread;
@@ -270,7 +133,8 @@ int main(void)
 
             pthread_mutex_lock(&g_event_mutex);
 
-            pCur->msg_id = i;
+            pCur->args.base_msg_info.msg_tag = i;
+            pCur->args.data[0].pAddr         = pCur;
             llist_node_init(&pCur->list);
             llist_node_insert(&g_1st_event, &pCur->list);
 
